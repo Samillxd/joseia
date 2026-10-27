@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EstudiBot - Asistente de Estudio IA</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            400: '#2dd4bf',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            900: '#134e4a',
+                        },
+                        violetBrand: {
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+            font-family: 'Inter', sans-serif;
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+
+        /* Glassmorphism styling */
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-input {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .glass-input:focus-within {
+            border-color: #2dd4bf;
+            box-shadow: 0 0 15px rgba(45, 212, 191, 0.3);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(45, 212, 191, 0.3);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(45, 212, 191, 0.6);
+        }
+
+        /* Glowing animation effects */
+        @keyframes pulseGlow {
+            0%, 100% { filter: drop-shadow(0 0 15px rgba(45, 212, 191, 0.4)); }
+            50% { filter: drop-shadow(0 0 25px rgba(139, 92, 246, 0.6)); }
+        }
+
+        .avatar-container {
+            animation: pulseGlow 4s infinite ease-in-out;
+        }
+
+        /* Float animation */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .floating {
+            animation: float 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between overflow-hidden relative">
+
+    <!-- Header / Navbar -->
+    <header class="w-full px-6 py-4 flex justify-between items-center glass-panel z-20 border-b border-slate-700/50">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-400 to-indigo-500 flex items-center justify-center text-slate-900 font-extrabold text-xl shadow-lg">
+                <i class="fa-solid font-bold fa-robot text-slate-900"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold bg-gradient-to-r from-teal-300 to-indigo-300 bg-clip-text text-transparent">
+                    EstudiBot IA
+                </h1>
+                <p class="text-xs text-slate-400">Proyecto de Feria Escolar</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-2 md:space-x-4">
+            <!-- Voice toggle button -->
+            <button id="ttsToggleBtn" title="Activar/Desactivar Voz" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 border border-slate-700 text-teal-300 hover:bg-slate-700 transition">
+                <i id="ttsIcon" class="fa-solid fa-volume-high"></i>
+                <span id="ttsStatus" class="hidden sm:inline">Voz Activada</span>
+            </button>
+
+            <!-- Task Panel Drawer Toggle -->
+            <button id="openPlannerBtn" class="flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-teal-500 to-indigo-600 text-white hover:opacity-90 transition shadow-md">
+                <i class="fa-solid fa-calendar-check"></i>
+                <span>Mi Planificador</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Central Area: Avatar Canvas & Dialogue Display -->
+    <main class="flex-1 flex flex-col items-center justify-center relative p-4 z-10 max-w-4xl mx-auto w-full">
+        
+        <!-- Interactive Robot Avatar Container -->
+        <div class="avatar-container relative mb-4 floating flex flex-col items-center">
+            
+            <!-- SVG Animated Avatar -->
+            <svg id="robotAvatar" width="220" height="220" viewBox="0 0 200 200" class="cursor-pointer transition-transform duration-300 hover:scale-105">
+                <defs>
+                    <!-- Body Gradients -->
+                    <linearGradient id="headGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#334155"/>
+                        <stop offset="100%" stop-color="#0f172a"/>
+                    </linearGradient>
+                    <linearGradient id="faceGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#1e293b"/>
+                        <stop offset="100%" stop-color="#020617"/>
+                    </linearGradient>
+                    <linearGradient id="eyeGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#38bdf8"/>
+                        <stop offset="100%" stop-color="#2dd4bf"/>
+                    </linearGradient>
+                </defs>
+
+                <!-- Antenna -->
+                <line x1="100" y1="35" x2="100" y2="15" stroke="#64748b" stroke-width="4" stroke-linecap="round"/>
+                <circle id="antennaOrb" cx="100" cy="12" r="7" fill="#2dd4bf" class="transition-colors duration-300">
+                    <animate attributeName="r" values="7;9;7" dur="2s" repeatCount="indefinite" />
+                </circle>
+
+                <!-- Ears / Headphones -->
+                <rect x="25" y="70" width="12" height="30" rx="4" fill="#38bdf8"/>
+                <rect x="163" y="70" width="12" height="30" rx="4" fill="#38bdf8"/>
+
+                <!-- Head Outer Frame -->
+                <rect x="35" y="35" width="130" height="105" rx="28" fill="url(#headGrad)" stroke="#475569" stroke-width="3"/>
+                
+                <!-- Inner Screen / Face Display -->
+                <rect x="45" y="45" width="110" height="85" rx="20" fill="url(#faceGrad)" stroke="#334155" stroke-width="2"/>
+
+                <!-- Eyes Layer -->
+                <g id="eyesGroup">
+                    <!-- Left Eye -->
+                    <ellipse id="leftEye" cx="75" cy="75" rx="12" ry="14" fill="url(#eyeGlow)"/>
+                    <circle cx="72" cy="71" r="4" fill="#ffffff"/>
+                    
+                    <!-- Right Eye -->
+                    <ellipse id="rightEye" cx="125" cy="75" rx="12" ry="14" fill="url(#eyeGlow)"/>
+                    <circle cx="122" cy="71" r="4" fill="#ffffff"/>
+                </g>
+
+                <!-- Eyebrows / Expressions -->
+                <path id="leftEyebrow" d="M 62 56 Q 75 54 86 58" stroke="#38bdf8" stroke-width="3" stroke-linecap="round" fill="none"/>
+                <path id="rightEyebrow" d="M 114 58 Q 125 54 138 56" stroke="#38bdf8" stroke-width="3" stroke-linecap="round" fill="none"/>
+
+                <!-- Dynamic Mouth (Animated via JS) -->
+                <path id="robotMouth" d="M 75 102 Q 100 106 125 102" stroke="#2dd4bf" stroke-width="4" stroke-linecap="round" fill="none" class="transition-all duration-75"/>
+
+                <!-- Cheek Blush Dots -->
+                <circle cx="60" cy="95" r="5" fill="#f43f5e" opacity="0.3"/>
+                <circle cx="140" cy="95" r="5" fill="#f43f5e" opacity="0.3"/>
+
+                <!-- Body Base Preview -->
+                <path d="M 70 142 L 130 142 L 145 180 L 55 180 Z" fill="#334155" stroke="#475569" stroke-width="2"/>
+                <circle cx="100" cy="160" r="10" fill="#2dd4bf" opacity="0.8"/>
+            </svg>
+
+            <!-- Status Indicator Badge -->
+            <div id="botStatusBadge" class="mt-2 px-3 py-1 rounded-full text-xs font-semibold bg-teal-500/20 text-teal-300 border border-teal-500/30 flex items-center space-x-2">
+                <span class="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>
+                <span id="botStatusText">EstudiBot listo para ayudarte</span>
+            </div>
+        </div>
+
+        <!-- AI Dialogue Box (Speech Bubble output) -->
+        <div class="w-full max-w-2xl glass-panel rounded-2xl p-5 shadow-2xl relative border border-slate-700/60 transition-all duration-300">
+            <!-- Speech Bubble Tail pointing to Avatar -->
+            <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-b-[12px] border-b-slate-800/80"></div>
+
+            <div class="flex items-start space-x-3 mb-2">
+                <span class="text-xs font-semibold uppercase tracking-wider text-teal-400 bg-teal-950/60 px-2.5 py-0.5 rounded-full border border-teal-800/50">Respuesta</span>
+                <span id="typingIndicator" class="hidden text-xs text-slate-400 items-center space-x-1">
+                    <i class="fa-solid fa-circle-notch animate-spin text-teal-400"></i>
+                    <span>Procesando...</span>
+                </span>
+            </div>
+
+            <!-- Dialogue Text Output -->
+            <div id="aiResponseText" class="text-slate-200 text-sm md:text-base leading-relaxed max-h-48 overflow-y-auto pr-2">
+                ¡Hola! 👋 Soy **EstudiBot**, tu asistente inteligente para la feria escolar. ¿En qué quieres organizarte hoy? Puedo ayudarte a armar un horario de repaso, estructurar tus tareas o sugerirte técnicas de estudio rápidas.
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom Controls & Input Area (Gemini Style) -->
+    <footer class="w-full max-w-3xl mx-auto px-4 pb-4 pt-2 z-20 flex flex-col space-y-3">
+        
+        <!-- Quick Action Chips -->
+        <div class="flex items-center space-x-2 overflow-x-auto pb-1 no-scrollbar text-xs">
+            <button onclick="sendQuickPrompt('Organiza mi semana escolar con un horario')" class="chip-btn flex-shrink-0 px-3 py-1.5 rounded-full bg-slate-800/80 hover:bg-teal-900/40 border border-slate-700 hover:border-teal-500/50 text-slate-300 hover:text-teal-300 transition flex items-center space-x-1.5">
+                <i class="fa-solid fa-calendar-days text-teal-400"></i>
+                <span>Organizar mi semana</span>
+            </button>
+
+            <button onclick="sendQuickPrompt('Dame 3 técnicas efectivas de estudio para exámenes')" class="chip-btn flex-shrink-0 px-3 py-1.5 rounded-full bg-slate-800/80 hover:bg-teal-900/40 border border-slate-700 hover:border-teal-500/50 text-slate-300 hover:text-teal-300 transition flex items-center space-x-1.5">
+                <i class="fa-solid fa-lightbulb text-amber-400"></i>
+                <span>Técnicas de estudio</span>
+            </button>
+
+            <button onclick="sendQuickPrompt('Cómo priorizar mis tareas según la matriz de Eisenhower')" class="chip-btn flex-shrink-0 px-3 py-1.5 rounded-full bg-slate-800/80 hover:bg-teal-900/40 border border-slate-700 hover:border-teal-500/50 text-slate-300 hover:text-teal-300 transition flex items-center space-x-1.5">
+                <i class="fa-solid fa-list-check text-indigo-400"></i>
+                <span>Priorizar tareas</span>
+            </button>
+
+            <button onclick="sendQuickPrompt('Dame un plan para preparar mi proyecto de ciencia')" class="chip-btn flex-shrink-0 px-3 py-1.5 rounded-full bg-slate-800/80 hover:bg-teal-900/40 border border-slate-700 hover:border-teal-500/50 text-slate-300 hover:text-teal-300 transition flex items-center space-x-1.5">
+                <i class="fa-solid fa-flask text-pink-400"></i>
+                <span>Plan de Feria de Ciencia</span>
+            </button>
+        </div>
+
+        <!-- Sleek Floating Input Bar -->
+        <div class="glass-input rounded-2xl p-2 flex items-center shadow-2xl relative">
+            
+            <!-- Voice Dictation Button (Microphone) -->
+            <button id="micBtn" title="Hablar por micrófono" class="p-2.5 text-slate-400 hover:text-teal-400 rounded-xl hover:bg-slate-800/60 transition flex justify-center items-center">
+                <i class="fa-solid fa-microphone text-base"></i>
+            </button>
+
+            <!-- Text Input -->
+            <input id="userInput" type="text" placeholder="Escribe tu consulta o pide un plan de estudio..." 
+                   class="w-full bg-transparent border-none outline-none text-slate-100 placeholder-slate-400 text-sm md:text-base px-3"
+                   onkeydown="if(event.key === 'Enter') handleSend();">
+
+            <!-- Send Button -->
+            <button id="sendBtn" onclick="handleSend()" title="Enviar mensaje" 
+                    class="p-2.5 bg-gradient-to-r from-teal-400 to-indigo-500 text-slate-900 rounded-xl font-bold hover:opacity-90 transition shadow-lg flex justify-center items-center">
+                <i class="fa-solid fa-paper-plane text-sm"></i>
+            </button>
+        </div>
+
+        <p class="text-[10px] text-center text-slate-500">
+            Feria de Ciencia Escolar 2026 • Asistente Didáctico con voz interactiva y avatar animado
+        </p>
+    </footer>
+
+    <!-- Side Drawer: Study Task Planner & Schedule Manager -->
+    <div id="plannerDrawer" class="fixed inset-y-0 right-0 w-full max-w-md glass-panel bg-slate-900/95 z-50 transform translate-x-full transition-transform duration-300 ease-in-out border-l border-slate-700/80 flex flex-col p-6 shadow-2xl">
+        
+        <!-- Drawer Header -->
+        <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-clipboard-list text-teal-400 text-lg"></i>
+                <h2 class="text-lg font-bold text-slate-100">Planificador de Estudio</h2>
+            </div>
+            <button id="closePlannerBtn" class="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <!-- Planner Sections (Tabs) -->
+        <div class="flex-1 overflow-y-auto my-4 space-y-6 pr-1">
+            
+            <!-- Quick Task Adder -->
+            <div class="bg-slate-800/60 rounded-xl p-4 border border-slate-700">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-teal-400 mb-2">Agregar Tarea Pendiente</h3>
+                <div class="flex space-x-2">
+                    <input id="newTaskInput" type="text" placeholder="Ej: Repasar Biología Pág. 45" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-teal-400">
+                    <button onclick="addNewTask()" class="bg-teal-500 hover:bg-teal-600 text-slate-900 px-3 py-1.5 rounded-lg font-bold text-xs">
+                        +
+                    </button>
+                </div>
+            </div>
+
+            <!-- Task Checklist -->
+            <div>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex justify-between items-center">
+                    <span>Tareas de la Semana</span>
+                    <span id="taskCounter" class="text-teal-400 text-[11px]">0/0</span>
+                </h3>
+                <ul id="taskList" class="space-y-2">
+                    <!-- Default initial tasks loaded by JS -->
+                </ul>
+            </div>
+
+            <!-- Interactive Weekly Schedule Preview -->
+            <div>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Horario Recomendado Hoy</h3>
+                <div class="space-y-2 text-xs">
+                    <div class="p-2.5 rounded-lg bg-slate-800/80 border-l-4 border-teal-400 flex justify-between">
+                        <div>
+                            <p class="font-semibold text-slate-200">Bloque 1: Materia Compleja</p>
+                            <p class="text-[11px] text-slate-400">Matemáticas / Ciencias</p>
+                        </div>
+                        <span class="text-teal-400 font-mono">45 min</span>
+                    </div>
+
+                    <div class="p-2.5 rounded-lg bg-slate-800/80 border-l-4 border-amber-400 flex justify-between">
+                        <div>
+                            <p class="font-semibold text-slate-200">Descanso Activo</p>
+                            <p class="text-[11px] text-slate-400">Caminar o hidratación</p>
+                        </div>
+                        <span class="text-amber-400 font-mono">15 min</span>
+                    </div>
+
+                    <div class="p-2.5 rounded-lg bg-slate-800/80 border-l-4 border-indigo-400 flex justify-between">
+                        <div>
+                            <p class="font-semibold text-slate-200">Bloque 2: Repaso & Lectura</p>
+                            <p class="text-[11px] text-slate-400">Historia / Comunicación</p>
+                        </div>
+                        <span class="text-indigo-400 font-mono">30 min</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Planner Footer Actions -->
+        <div class="pt-3 border-t border-slate-800 flex justify-between">
+            <button onclick="askAIToGenerateSchedule()" class="w-full py-2 rounded-xl bg-gradient-to-r from-teal-500 to-indigo-600 font-bold text-xs text-white hover:opacity-90 transition">
+                <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Optimizar Horario con IA
+            </button>
+        </div>
+    </div>
+
+    <!-- Application Script Logic -->
+    <script>
+        /* -------------------------------------------------------------
+           Global State & Configuration
+        ------------------------------------------------------------- */
+        let isTtsEnabled = true;
+        let isSpeaking = false;
+        let mouthAnimationTimer = null;
+        const synth = window.speechSynthesis;
+
+        // Tasks initial state
+        let tasks = [
+            { id: 1, text: "Preparar lámina para la Feria de Ciencias", completed: true },
+            { id: 2, text: "Repasar 30 min la regla de Pomodoro", completed: false },
+            { id: 3, text: "Organizar cuaderno de resúmenes", completed: false }
+        ];
+
+        /* -------------------------------------------------------------
+           UI & Event Listeners Initialization
+        ------------------------------------------------------------- */
+        document.addEventListener("DOMContentLoaded", () => {
+            renderTasks();
+            setupPlannerDrawer();
+            setupSpeechRecognition();
+
+            // Avatar eyes follow cursor effect
+            document.addEventListener("mousemove", (e) => {
+                const svg = document.getElementById("robotAvatar");
+                if(!svg) return;
+                const rect = svg.getBoundingClientRect();
+                const avatarCenterX = rect.left + rect.width / 2;
+                const avatarCenterY = rect.top + rect.height / 2;
+
+                const angle = Math.atan2(e.clientY - avatarCenterY, e.clientX - avatarCenterX);
+                const distance = Math.min(3, Math.hypot(e.clientX - avatarCenterX, e.clientY - avatarCenterY) / 50);
+
+                const moveX = Math.cos(angle) * distance;
+                const moveY = Math.sin(angle) * distance;
+
+                const leftEye = document.getElementById("leftEye");
+                const rightEye = document.getElementById("rightEye");
+
+                if (leftEye && rightEye) {
+                    leftEye.setAttribute("cx", 75 + moveX);
+                    leftEye.setAttribute("cy", 75 + moveY);
+                    rightEye.setAttribute("cx", 125 + moveX);
+                    rightEye.setAttribute("cy", 75 + moveY);
+                }
+            });
+
+            // TTS Toggle logic
+            document.getElementById("ttsToggleBtn").addEventListener("click", () => {
+                isTtsEnabled = !isTtsEnabled;
+                const icon = document.getElementById("ttsIcon");
+                const status = document.getElementById("ttsStatus");
+                
+                if (isTtsEnabled) {
+                    icon.className = "fa-solid fa-volume-high text-teal-400";
+                    status.innerText = "Voz Activada";
+                } else {
+                    icon.className = "fa-solid fa-volume-xmark text-slate-500";
+                    status.innerText = "Voz Muteada";
+                    synth.cancel();
+                    stopMouthAnimation();
+                }
+            });
+        });
+
+        /* -------------------------------------------------------------
+           Animated Mouth & Avatar Controller
+        ------------------------------------------------------------- */
+        function startMouthAnimation() {
+            if (mouthAnimationTimer) clearInterval(mouthAnimationTimer);
+            const mouth = document.getElementById("robotMouth");
+            const orb = document.getElementById("antennaOrb");
+            
+            if (orb) orb.setAttribute("fill", "#f43f5e"); // Reddish when talking
+
+            // Mouth shapes paths for speech simulation
+            const shapes = [
+                "M 75 102 Q 100 115 125 102",  // Open wider
+                "M 75 102 Q 100 95 125 102",   // Slightly closed
+                "M 75 102 Q 100 120 125 102",  // O shape
+                "M 75 102 Q 100 106 125 102"   // Default neutral
+            ];
+
+            let index = 0;
+            mouthAnimationTimer = setInterval(() => {
+                mouth.setAttribute("d", shapes[index]);
+                index = (index + 1) % shapes.length;
+            }, 120);
+        }
+
+        function stopMouthAnimation() {
+            if (mouthAnimationTimer) {
+                clearInterval(mouthAnimationTimer);
+                mouthAnimationTimer = null;
+            }
+            const mouth = document.getElementById("robotMouth");
+            const orb = document.getElementById("antennaOrb");
+            
+            if (mouth) mouth.setAttribute("d", "M 75 102 Q 100 106 125 102");
+            if (orb) orb.setAttribute("fill", "#2dd4bf");
+            
+            updateBotStatus("EstudiBot listo para ayudarte", "teal");
+        }
+
+        function updateBotStatus(text, theme = "teal") {
+            const badgeText = document.getElementById("botStatusText");
+            if (badgeText) badgeText.innerText = text;
+        }
+
+        /* -------------------------------------------------------------
+           Speech Synthesis (Text to Speech)
+        ------------------------------------------------------------- */
+        function speakText(text) {
+            if (!isTtsEnabled || !('speechSynthesis' in window)) return;
+
+            // Strip markdown formatting for voice reading
+            const cleanText = text.replace(/[*_#`]/g, '');
+
+            synth.cancel(); // Stop any active speech
+
+            const utterance = new SpeechSynthesisUtterance(cleanText);
+            utterance.lang = 'es-ES';
+            utterance.rate = 1.0;
+            utterance.pitch = 1.1; // Slightly higher pitch for friendly robot voice
+
+            utterance.onstart = () => {
+                isSpeaking = true;
+                startMouthAnimation();
+                updateBotStatus("EstudiBot hablando...", "indigo");
+            };
+
+            utterance.onend = () => {
+                isSpeaking = false;
+                stopMouthAnimation();
+            };
+
+            utterance.onerror = () => {
+                isSpeaking = false;
+                stopMouthAnimation();
+            };
+
+            synth.speak(utterance);
+        }
+
+        /* -------------------------------------------------------------
+           Interactive Local AI Response Logic (Offline Pre-programmed + Gemini Integration)
+        ------------------------------------------------------------- */
+        async function handleSend() {
+            const inputEl = document.getElementById("userInput");
+            const query = inputEl.value.trim();
+            if (!query) return;
+
+            inputEl.value = "";
+            showTyping(true);
+            updateBotStatus("EstudiBot pensando...", "amber");
+
+            // Execute response generation
+            const responseText = await generateAIResponse(query);
+            
+            showTyping(false);
+            displayResponse(responseText);
+            speakText(responseText);
+        }
+
+        function sendQuickPrompt(promptText) {
+            document.getElementById("userInput").value = promptText;
+            handleSend();
+        }
+
+        function showTyping(isTyping) {
+            const indicator = document.getElementById("typingIndicator");
+            if (isTyping) {
+                indicator.classList.remove("hidden");
+                indicator.classList.add("flex");
+            } else {
+                indicator.classList.add("hidden");
+                indicator.classList.remove("flex");
+            }
+        }
+
+        function displayResponse(text) {
+            const responseEl = document.getElementById("aiResponseText");
+            // Formatter for markdown-like bolding
+            const formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong class="text-teal-300 font-semibold">$1</strong>')
+                                      .replace(/\n/g, '<br>');
+            responseEl.innerHTML = formattedText;
+        }
+
+        /* Smart AI engine combining Gemini API structure with specialized offline fallback for school fair guarantee */
+        async function generateAIResponse(userPrompt) {
+            const lower = userPrompt.toLowerCase();
+
+            // Try local rules first for instant school fair presentation reliability
+            if (lower.includes("semana") || lower.includes("horario")) {
+                return "¡Excelente idea! Para organizar tu semana escolar te recomiendo usar bloques de 45 minutos. Por ejemplo:\n" +
+                       "• **Lunes y Miércoles:** Matemáticas y Ciencias (Mapeo conceptual).\n" +
+                       "• **Martes y Jueves:** Comunicación e Historia (Lectura activa).\n" +
+                       "• **Viernes:** Repaso general de tareas pendientes.\n" +
+                       "¡No olvides incluir pausas activas de 10 minutos entre bloques!";
+            }
+
+            if (lower.includes("técnica") || lower.includes("tecnica") || lower.includes("examen") || lower.includes("tip")) {
+                return "Aquí tienes **3 técnicas infalibles para tus exámenes**:\n" +
+                       "1. **Técnica Pomodoro:** Estudia 25 min concentrado y descansa 5 min.\n" +
+                       "2. **Método Feynman:** Explícale el tema a un compañero con palabras sencillas.\n" +
+                       "3. **Repaso Espaciado:** Revisa tus apuntes 1 día, 3 días y 1 semana después de la clase.";
+            }
+
+            if (lower.includes("priorizar") || lower.includes("eisenhower") || lower.includes("tarea")) {
+                return "Usa la **Matriz de Eisenhower** para clasificar tus deberes escolares:\n" +
+                       "• **Urgente e Importante:** Hazlo de inmediato (Ej: Examen mañana).\n" +
+                       "• **Importante pero NO urgente:** Planifícalo (Ej: Proyecto de ciencia para la próxima semana).\n" +
+                       "• **No importante:** Hazlo rápido o pide orientación.";
+            }
+
+            if (lower.includes("ciencia") || lower.includes("feria") || lower.includes("proyecto")) {
+                return "¡Para triunfar en tu **Feria de Ciencia** sigue este plan de 4 pasos:\n" +
+                       "1. **Pregunta de Investigación:** Define un problema claro.\n" +
+                       "2. **Experimentación:** Registra fotos y datos numéricos en una tabla.\n" +
+                       "3. **Lámina Visual:** Usa pocos párrafos y más diagramas/gráficos.\n" +
+                       "4. **Presentación Oral:** Domina tu introducción de 2 minutos.";
+            }
+
+            // Optional Real Gemini API Fetch Attempt (Falls back smoothly if offline/no key)
+            try {
+                const systemPrompt = "Eres EstudiBot, un amigable y entusiasta asistente escolar inteligente en una feria de ciencias. Tu objetivo es dar consejos prácticos, motivadores y breves (máximo 4 oraciones) para ayudar a estudiantes de colegio a organizarse mejor con sus tareas, horarios y exámenes.";
+                const apiKey = ""; // Canvas automatically supplies API key if configured
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+                const payload = {
+                    contents: [{ parts: [{ text: userPrompt }] }],
+                    systemInstruction: { parts: [{ text: systemPrompt }] }
+                };
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const aiResult = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (aiResult) return aiResult;
+                }
+            } catch (e) {
+                console.log("Using offline smart response");
+            }
+
+            // General friendly fallback response
+            return `¡Entendido! Para responder mejor a **"${userPrompt}"**, te sugiero dividir tu meta en 3 pasos realizables hoy mismo. Agrega la primera tarea en el **Planificador** arriba a la derecha para no olvidarla. ¡Tú puedes! 🚀`;
+        }
+
+        /* -------------------------------------------------------------
+           Voice Input / Speech Recognition (Dictation)
+        ------------------------------------------------------------- */
+        function setupSpeechRecognition() {
+            const micBtn = document.getElementById("micBtn");
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+            if (!SpeechRecognition) {
+                micBtn.style.display = "none";
+                return;
+            }
+
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'es-ES';
+            recognition.interimResults = false;
+
+            micBtn.addEventListener("click", () => {
+                try {
+                    recognition.start();
+                    micBtn.classList.add("text-rose-400", "animate-pulse");
+                    updateBotStatus("Escuchando tu voz...", "rose");
+                } catch (e) {
+                    recognition.stop();
+                }
+            });
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById("userInput").value = transcript;
+                micBtn.classList.remove("text-rose-400", "animate-pulse");
+                handleSend();
+            };
+
+            recognition.onerror = () => {
+                micBtn.classList.remove("text-rose-400", "animate-pulse");
+                updateBotStatus("EstudiBot listo para ayudarte", "teal");
+            };
+
+            recognition.onend = () => {
+                micBtn.classList.remove("text-rose-400", "animate-pulse");
+            };
+        }
+
+        /* -------------------------------------------------------------
+           Task Planner & Drawer Logic
+        ------------------------------------------------------------- */
+        function setupPlannerDrawer() {
+            const drawer = document.getElementById("plannerDrawer");
+            const openBtn = document.getElementById("openPlannerBtn");
+            const closeBtn = document.getElementById("closePlannerBtn");
+
+            openBtn.addEventListener("click", () => drawer.classList.remove("translate-x-full"));
+            closeBtn.addEventListener("click", () => drawer.classList.add("translate-x-full"));
+        }
+
+        function renderTasks() {
+            const listEl = document.getElementById("taskList");
+            const counterEl = document.getElementById("taskCounter");
+            listEl.innerHTML = "";
+
+            let completedCount = 0;
+
+            tasks.forEach(task => {
+                if (task.completed) completedCount++;
+
+                const li = document.createElement("li");
+                li.className = `flex items-center justify-between p-2.5 rounded-lg border text-xs transition ${
+                    task.completed ? "bg-slate-800/40 border-slate-800 text-slate-500 line-through" : "bg-slate-800 border-slate-700 text-slate-200"
+                }`;
+
+                li.innerHTML = `
+                    <div class="flex items-center space-x-2.5">
+                        <input type="checkbox" ${task.completed ? "checked" : ""} 
+                               onchange="toggleTask(${task.id})" 
+                               class="rounded accent-teal-400 cursor-pointer">
+                        <span>${task.text}</span>
+                    </div>
+                    <button onclick="deleteTask(${task.id})" class="text-slate-500 hover:text-rose-400 p-1">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                `;
+                listEl.appendChild(li);
+            });
+
+            counterEl.innerText = `${completedCount}/${tasks.length}`;
+        }
+
+        function addNewTask() {
+            const input = document.getElementById("newTaskInput");
+            const val = input.value.trim();
+            if (!val) return;
+
+            tasks.push({
+                id: Date.now(),
+                text: val,
+                completed: false
+            });
